@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Files, MessageSquare, MonitorPlay, PanelLeft, Rocket, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { ChatStreamEvent, FileSnapshot, SandboxStatus } from "@shared/api";
@@ -31,16 +31,37 @@ export function BuilderWorkspace() {
   const [sandboxStatus, setSandboxStatus] = useState<SandboxStatus>("disconnected");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [activePreviewUrl, setActivePreviewUrl] = useState(seededPreviewUrl);
+  const [isReadOnlyInvite, setIsReadOnlyInvite] = useState(false);
 
   const selectedFile = files.find((file) => file.path === selectedPath);
-  const inviteUrl = buildInviteUrl("launchpad-session", seededPreviewUrl);
+  const inviteUrl = buildInviteUrl("launchpad-session", activePreviewUrl);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const session = params.get("session");
+    const preview = params.get("preview");
+    if (session) {
+      setIsReadOnlyInvite(true);
+      setMobilePanel("preview");
+      if (preview && isHttpUrl(preview)) setActivePreviewUrl(preview);
+    }
+  }, []);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 767px)");
+    const syncViewport = () => setViewport(mediaQuery.matches ? "mobile" : "desktop");
+    syncViewport();
+    mediaQuery.addEventListener("change", syncViewport);
+    return () => mediaQuery.removeEventListener("change", syncViewport);
+  }, []);
 
   function addActivity(item: ActivityItem) {
     setActivity((current) => [...current, item]);
   }
 
   async function submitPrompt(prompt: string) {
-    if (isGenerating) return;
+    if (isGenerating || isReadOnlyInvite) return;
     const userMessage: BuilderMessage = { id: crypto.randomUUID(), role: "user", time: now(), content: prompt };
     const assistantId = crypto.randomUUID();
     const assistantMessage: BuilderMessage = { id: assistantId, role: "assistant", time: now(), content: "", state: "streaming" };
@@ -110,9 +131,10 @@ export function BuilderWorkspace() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ files: snapshot, command: "pnpm build" }),
       });
-      const result = await response.json() as { status?: SandboxStatus; message?: string };
+      const result = await response.json() as { status?: SandboxStatus; message?: string; previewUrl?: string };
       const status = result.status ?? "failed";
       setSandboxStatus(status);
+      if (result.previewUrl && isHttpUrl(result.previewUrl)) setActivePreviewUrl(result.previewUrl);
       if (status === "disconnected") {
         toast({ title: "Sandbox runner not connected", description: result.message });
       }
@@ -123,18 +145,37 @@ export function BuilderWorkspace() {
   }
 
   function handleNewProject() {
+    if (isReadOnlyInvite) {
+      toast({ title: "Read-only session", description: "Ask the owner to create a new project from the editor session." });
+      return;
+    }
     setMessages([{ id: crypto.randomUUID(), role: "assistant", time: now(), content: "New workspace ready. Describe the full-stack app you want to build, and I’ll map the first slice." }]);
     setActivity([]);
     setSelectedPath("app/page.tsx");
     toast({ title: "Fresh workspace created", description: "Your current launchpad remains available in Versions." });
   }
 
-  function handleCopySettings() {
-    void navigator.clipboard?.writeText(settingsJson);
-    toast({ title: "settings.json copied", description: "The provider-neutral Claude route is ready to paste." });
+  async function handleCopySettings() {
+    if (!navigator.clipboard) {
+      toast({ title: "Copy is unavailable", description: "Your browser does not allow clipboard access.", variant: "destructive" });
+      return false;
+    }
+
+    try {
+      await navigator.clipboard.writeText(settingsJson);
+      toast({ title: "settings.json copied", description: "The provider-neutral Claude route is ready to paste." });
+      return true;
+    } catch {
+      toast({ title: "Could not copy settings", description: "Clipboard access was blocked by the browser.", variant: "destructive" });
+      return false;
+    }
   }
 
   function handleDeploy() {
+    if (isReadOnlyInvite) {
+      toast({ title: "Read-only session", description: "Ask the owner to deploy changes from the editor session." });
+      return;
+    }
     toast({ title: "Deployment checklist ready", description: "Connect a repository or sandbox runner to enable deploy from this workspace." });
   }
 
@@ -144,18 +185,18 @@ export function BuilderWorkspace() {
   }
 
   return <div className="min-h-screen bg-[#080c16] text-slate-200 selection:bg-cyan-300/30 selection:text-cyan-50">
-    <div className="flex h-screen min-h-[640px] overflow-hidden bg-[linear-gradient(135deg,#080c16_0%,#0d1322_58%,#11152a_100%)]">
-      <ProjectRail onNewProject={handleNewProject} />
-      <main className="flex min-w-0 flex-1 flex-col">
-        <TopBar viewport={viewport} onViewportChange={setViewport} onShare={() => setInviteOpen(true)} onDeploy={handleDeploy} />
+    <div className="flex h-[100dvh] min-h-[100dvh] overflow-hidden bg-[linear-gradient(135deg,#080c16_0%,#0d1322_58%,#11152a_100%)]">
+      <ProjectRail onNewProject={handleNewProject} onSelectFile={(path) => { setSelectedPath(path); setPreviewTab("code"); }} onNotice={(title, description) => toast({ title, description })} />
+      <main className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <TopBar viewport={viewport} onViewportChange={setViewport} onShare={() => setInviteOpen(true)} onDeploy={handleDeploy} onMoreActions={() => toast({ title: "Workspace actions", description: "Share, preview, and deploy controls are available in the header." })} />
         <div className="hidden min-h-0 flex-1 lg:flex">
-          <ChatPanel messages={messages} activity={activity} isGenerating={isGenerating} providerReady={providerReady} onSubmit={submitPrompt} />
-          <PreviewPanel viewport={viewport} onRefresh={handleRefresh} previewUrl={seededPreviewUrl} selectedFile={selectedFile} isRefreshing={isRefreshing} activeTab={previewTab} onTabChange={setPreviewTab} sandboxStatus={sandboxStatus} />
+          <ChatPanel messages={messages} activity={activity} isGenerating={isGenerating} providerReady={providerReady} onSubmit={submitPrompt} readOnly={isReadOnlyInvite} />
+          <PreviewPanel viewport={viewport} onRefresh={handleRefresh} previewUrl={activePreviewUrl} selectedFile={selectedFile} isRefreshing={isRefreshing} activeTab={previewTab} onTabChange={setPreviewTab} sandboxStatus={sandboxStatus} readOnly={isReadOnlyInvite} onExternalOpenBlocked={() => toast({ title: "Preview window blocked", description: "Allow pop-ups for this app to open the preview." })} />
           <InspectorPanel files={files} selectedPath={selectedPath} settingsJson={settingsJson} activeTab={inspectorTab} onTabChange={setInspectorTab} onSelectFile={(path) => { setSelectedPath(path); setPreviewTab("code"); }} onCopySettings={handleCopySettings} />
         </div>
-        <div className="flex min-h-0 flex-1 lg:hidden">
-          {mobilePanel === "chat" && <ChatPanel messages={messages} activity={activity} isGenerating={isGenerating} providerReady={providerReady} onSubmit={submitPrompt} />}
-          {mobilePanel === "preview" && <PreviewPanel viewport={viewport} onRefresh={handleRefresh} previewUrl={seededPreviewUrl} selectedFile={selectedFile} isRefreshing={isRefreshing} activeTab={previewTab} onTabChange={setPreviewTab} sandboxStatus={sandboxStatus} />}
+        <div className="flex min-h-0 flex-1 overflow-hidden lg:hidden">
+          {mobilePanel === "chat" && <ChatPanel messages={messages} activity={activity} isGenerating={isGenerating} providerReady={providerReady} onSubmit={submitPrompt} readOnly={isReadOnlyInvite} />}
+          {mobilePanel === "preview" && <PreviewPanel viewport={viewport} onRefresh={handleRefresh} previewUrl={activePreviewUrl} selectedFile={selectedFile} isRefreshing={isRefreshing} activeTab={previewTab} onTabChange={setPreviewTab} sandboxStatus={sandboxStatus} readOnly={isReadOnlyInvite} onExternalOpenBlocked={() => toast({ title: "Preview window blocked", description: "Allow pop-ups for this app to open the preview." })} />}
           {mobilePanel === "inspector" && <MobileInspector files={files} selectedPath={selectedPath} settingsJson={settingsJson} activeTab={inspectorTab} onTabChange={setInspectorTab} onSelectFile={(path) => { setSelectedPath(path); setPreviewTab("code"); setMobilePanel("preview"); }} onCopySettings={handleCopySettings} mobile />}
         </div>
         <MobileNav active={mobilePanel} onChange={setMobilePanel} />
@@ -166,7 +207,16 @@ export function BuilderWorkspace() {
 }
 
 function MobileInspector(props: React.ComponentProps<typeof InspectorPanel>) {
-  return <div className="flex min-h-0 flex-1 flex-col">{props.activeTab === "files" ? <InspectorPanel {...props} /> : <InspectorPanel {...props} />}</div>;
+  return <InspectorPanel {...props} />;
+}
+
+function isHttpUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 function MobileNav({ active, onChange }: { active: MobilePanel; onChange: (panel: MobilePanel) => void }) {

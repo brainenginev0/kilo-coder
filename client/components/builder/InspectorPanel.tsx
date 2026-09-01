@@ -16,23 +16,26 @@ interface InspectorPanelProps {
 }
 
 export function InspectorPanel({ files, selectedPath, settingsJson, activeTab, onTabChange, onSelectFile, onCopySettings, mobile = false }: InspectorPanelProps) {
-  return <aside className={`${mobile ? "flex w-full border-l-0" : "hidden w-[268px] border-l xl:flex"} min-h-0 shrink-0 flex-col border-white/[0.07] bg-[#0b101e]`}>
+  return <aside className={`${mobile ? "flex w-full flex-1 border-l-0" : "hidden w-[268px] border-l xl:flex"} min-h-0 shrink-0 flex-col border-white/[0.07] bg-[#0b101e]`}>
     <div className="flex h-11 shrink-0 items-center justify-between border-b border-white/[0.07] px-3"><div className="flex items-center gap-1"><button onClick={() => onTabChange("files")} className={`rounded-md px-2.5 py-1.5 text-[10px] font-semibold ${activeTab === "files" ? "bg-white/[0.08] text-white" : "text-slate-600 hover:text-slate-300"}`}>Files</button><button onClick={() => onTabChange("settings")} className={`rounded-md px-2.5 py-1.5 text-[10px] font-semibold ${activeTab === "settings" ? "bg-white/[0.08] text-white" : "text-slate-600 hover:text-slate-300"}`}>Settings</button></div><Settings2 className="size-3.5 text-slate-600" /></div>
     {activeTab === "files" ? <FilesView files={files} selectedPath={selectedPath} onSelectFile={onSelectFile} /> : <SettingsView value={settingsJson} onCopy={onCopySettings} />}
   </aside>;
 }
 
 function FilesView({ files, selectedPath, onSelectFile }: { files: ProjectFile[]; selectedPath: string; onSelectFile: (path: string) => void }) {
-  return <div className="min-h-0 flex-1 overflow-y-auto p-3 [scrollbar-color:#29334b_transparent]"><div className="mb-4 rounded-lg border border-violet-300/15 bg-violet-300/[0.05] p-3"><div className="flex items-center gap-2 text-[10px] font-semibold text-violet-100"><Boxes className="size-3.5 text-violet-300" /> Next.js application</div><p className="mt-1.5 font-mono text-[9px] leading-relaxed text-slate-600">App router · TypeScript<br />Node 20 · pnpm</p></div><div className="mb-2 flex items-center justify-between px-1"><span className="font-mono text-[9px] uppercase tracking-[0.16em] text-slate-600">Project files</span><span className="font-mono text-[9px] text-slate-700">{files.filter((file) => file.kind === "file").length}</span></div><div className="space-y-0.5">{files.map((file) => <FileRow key={file.path} file={file} selected={file.path === selectedPath} onClick={() => file.kind === "file" && onSelectFile(file.path)} />)}</div><div className="mt-7 space-y-2 border-t border-white/[0.07] pt-4"><p className="px-1 font-mono text-[9px] uppercase tracking-[0.16em] text-slate-600">Runtime</p><MetaRow icon={ShieldCheck} label="Auth" value="Not configured" warning /><MetaRow icon={Database} label="Database" value="Postgres ready" /><MetaRow icon={KeyRound} label="Secrets" value="3 environment vars" /></div></div>;
+  const [openFolders, setOpenFolders] = useState<Record<string, boolean>>(() => Object.fromEntries(files.filter((file) => file.kind === "folder").map((file) => [file.path, true])));
+
+  function toggleFolder(path: string) {
+    setOpenFolders((current) => ({ ...current, [path]: !current[path] }));
+  }
+
+  return <div className="min-h-0 flex-1 overflow-y-auto p-3 [scrollbar-color:#29334b_transparent]"><div className="mb-4 rounded-lg border border-violet-300/15 bg-violet-300/[0.05] p-3"><div className="flex items-center gap-2 text-[10px] font-semibold text-violet-100"><Boxes className="size-3.5 text-violet-300" /> Next.js application</div><p className="mt-1.5 font-mono text-[9px] leading-relaxed text-slate-600">App router · TypeScript<br />Node 20 · pnpm</p></div><div className="mb-2 flex items-center justify-between px-1"><span className="font-mono text-[9px] uppercase tracking-[0.16em] text-slate-600">Project files</span><span className="font-mono text-[9px] text-slate-700">{files.filter((file) => file.kind === "file").length}</span></div><div className="space-y-0.5">{files.map((file) => <FileRow key={file.path} file={file} selected={file.path === selectedPath} open={file.kind === "folder" ? openFolders[file.path] : undefined} onToggleFolder={toggleFolder} onClick={() => file.kind === "file" && onSelectFile(file.path)} />)}</div><div className="mt-7 space-y-2 border-t border-white/[0.07] pt-4"><p className="px-1 font-mono text-[9px] uppercase tracking-[0.16em] text-slate-600">Runtime</p><MetaRow icon={ShieldCheck} label="Auth" value="Not configured" warning /><MetaRow icon={Database} label="Database" value="Postgres ready" /><MetaRow icon={KeyRound} label="Secrets" value="3 environment vars" /></div></div>;
 }
 
-function FileRow({ file, selected, onClick }: { file: ProjectFile; selected: boolean; onClick: () => void }) {
-  const [open, setOpen] = useState(file.kind === "folder");
+function FileRow({ file, selected, open, onToggleFolder, onClick }: { file: ProjectFile; selected: boolean; open?: boolean; onToggleFolder: (path: string) => void; onClick: () => void }) {
   const isNested = file.path.includes("/");
-  if (file.kind === "folder") return <button onClick={() => setOpen((value) => !value)} className="flex w-full items-center gap-1.5 rounded-md px-1.5 py-1.5 text-left text-[10px] font-semibold text-slate-400 hover:bg-white/[0.04]"><span className="text-slate-600">{open ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}</span><Folder className="size-3.5 text-amber-300/70" />{file.path}</button>;
-  const parent = file.path.split("/")[0];
-  const parentOpen = parent ? true : open;
-  if (!parentOpen) return null;
+  if (file.kind === "folder") return <button onClick={() => onToggleFolder(file.path)} aria-expanded={open} className="flex w-full items-center gap-1.5 rounded-md px-1.5 py-1.5 text-left text-[10px] font-semibold text-slate-400 hover:bg-white/[0.04]"><span className="text-slate-600">{open ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}</span><Folder className="size-3.5 text-amber-300/70" />{file.path}</button>;
+  if (isNested && open === false) return null;
   return <button onClick={onClick} className={`flex w-full items-center gap-2 rounded-md py-1.5 pr-1.5 text-left text-[10px] transition-colors ${isNested ? "pl-8" : "pl-5"} ${selected ? "bg-cyan-300/10 text-cyan-100" : "text-slate-500 hover:bg-white/[0.04] hover:text-slate-300"}`}><FileIcon path={file.path} /><span className="truncate font-mono">{file.path.split("/").pop()}</span>{selected && <span className="ml-auto size-1.5 rounded-full bg-cyan-300" />}</button>;
 }
 

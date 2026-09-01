@@ -22,6 +22,9 @@ export function createServer() {
   app.get("/api/demo", handleDemo);
   app.post("/api/chat", handleChat);
   app.post("/api/projects/:projectId/build", handleProjectBuild);
+  app.use("/api", (_req, res) => {
+    res.status(404).json({ message: "API endpoint not found." });
+  });
 
   return app;
 }

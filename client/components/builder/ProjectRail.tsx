@@ -16,11 +16,13 @@ import { Button } from "@/components/ui/button";
 
 interface ProjectRailProps {
   onNewProject: () => void;
+  onSelectFile: (path: string) => void;
+  onNotice: (title: string, description: string) => void;
 }
 
 const recentFiles = ["app/page.tsx", "components/MetricCard.tsx", "settings.json"];
 
-export function ProjectRail({ onNewProject }: ProjectRailProps) {
+export function ProjectRail({ onNewProject, onSelectFile, onNotice }: ProjectRailProps) {
   return (
     <aside className="hidden h-full w-[230px] shrink-0 flex-col border-r border-white/[0.07] bg-[#090d1a] lg:flex">
       <div className="flex h-[72px] items-center gap-3 border-b border-white/[0.07] px-5">
@@ -34,7 +36,7 @@ export function ProjectRail({ onNewProject }: ProjectRailProps) {
       </div>
 
       <div className="flex-1 overflow-y-auto px-3 py-4">
-        <button className="mb-5 flex w-full items-center justify-between rounded-lg border border-white/10 bg-white/[0.045] px-3 py-2.5 text-left transition-colors hover:bg-white/[0.08]">
+        <button onClick={() => onNotice("Workspace selected", "Signal launchpad is the active personal workspace.")} className="mb-5 flex w-full items-center justify-between rounded-lg border border-white/10 bg-white/[0.045] px-3 py-2.5 text-left transition-colors hover:bg-white/[0.08]">
           <span className="flex items-center gap-2.5">
             <span className="grid size-6 place-items-center rounded-md bg-violet-400/15 font-mono text-[10px] font-bold text-violet-200">SL</span>
             <span>
@@ -52,14 +54,14 @@ export function ProjectRail({ onNewProject }: ProjectRailProps) {
         </Button>
 
         <RailSection label="Workspace">
-          <RailItem icon={Layers3} label="Overview" active />
-          <RailItem icon={Activity} label="Activity" trailing="3" />
-          <RailItem icon={GitBranch} label="Versions" />
+          <RailItem icon={Layers3} label="Overview" active onClick={() => onNotice("Overview", "The current project workspace is open.")} />
+          <RailItem icon={Activity} label="Activity" trailing="3" onClick={() => onNotice("Build activity", "Three recent workspace events are shown in Forge chat.")} />
+          <RailItem icon={GitBranch} label="Versions" onClick={() => onNotice("Versions", "Version history will be available when a repository is connected.")} />
         </RailSection>
 
         <RailSection label="Recent files" className="mt-7">
           {recentFiles.map((file) => (
-            <button key={file} className="group flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-[11px] text-slate-500 transition-colors hover:bg-white/[0.04] hover:text-slate-300">
+            <button key={file} onClick={() => onSelectFile(file)} className="group flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-[11px] text-slate-500 transition-colors hover:bg-white/[0.04] hover:text-slate-300">
               <FileCode2 className="size-3.5 text-slate-600 group-hover:text-cyan-300" />
               <span className="truncate font-mono">{file}</span>
             </button>
@@ -76,8 +78,8 @@ export function ProjectRail({ onNewProject }: ProjectRailProps) {
           <p className="font-mono text-[10px] leading-relaxed text-slate-500">Node 20 · Next 14<br />Connect runner to execute</p>
         </div>
         <div className="flex items-center gap-1">
-          <button className="grid size-8 place-items-center rounded-md text-slate-500 transition-colors hover:bg-white/[0.05] hover:text-slate-200" aria-label="Project settings"><Settings2 className="size-4" /></button>
-          <button className="grid size-8 place-items-center rounded-md text-slate-500 transition-colors hover:bg-white/[0.05] hover:text-slate-200" aria-label="Help"><CircleHelp className="size-4" /></button>
+          <button onClick={() => onNotice("Project settings", "Runtime settings are visible in the Files panel.")} className="grid size-8 place-items-center rounded-md text-slate-500 transition-colors hover:bg-white/[0.05] hover:text-slate-200" aria-label="Project settings"><Settings2 className="size-4" /></button>
+          <button onClick={() => onNotice("Codex Forge help", "Describe a change in chat, inspect the result, then share or deploy when ready.")} className="grid size-8 place-items-center rounded-md text-slate-500 transition-colors hover:bg-white/[0.05] hover:text-slate-200" aria-label="Help"><CircleHelp className="size-4" /></button>
           <div className="ml-auto grid size-7 place-items-center rounded-full border border-violet-300/20 bg-violet-300/10 font-mono text-[9px] font-bold text-violet-200">BR</div>
         </div>
       </div>
@@ -89,8 +91,8 @@ function RailSection({ label, children, className = "" }: { label: string; child
   return <section className={className}><p className="mb-2 px-2 font-mono text-[9px] font-bold uppercase tracking-[0.2em] text-slate-600">{label}</p>{children}</section>;
 }
 
-function RailItem({ icon: Icon, label, active = false, trailing }: { icon: typeof Box; label: string; active?: boolean; trailing?: string }) {
-  return <button className={`group flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left text-xs transition-colors ${active ? "bg-violet-300/10 text-violet-100" : "text-slate-500 hover:bg-white/[0.04] hover:text-slate-300"}`}>
+function RailItem({ icon: Icon, label, active = false, trailing, onClick }: { icon: typeof Box; label: string; active?: boolean; trailing?: string; onClick: () => void }) {
+  return <button onClick={onClick} className={`group flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left text-xs transition-colors ${active ? "bg-violet-300/10 text-violet-100" : "text-slate-500 hover:bg-white/[0.04] hover:text-slate-300"}`}>
     <Icon className={`size-3.5 ${active ? "text-violet-300" : "text-slate-600 group-hover:text-slate-400"}`} />
     <span>{label}</span>
     {trailing && <span className="ml-auto rounded bg-violet-300/15 px-1.5 py-0.5 font-mono text-[9px] text-violet-200">{trailing}</span>}

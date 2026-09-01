@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, Code2, ExternalLink, LayoutDashboard, Maximize2, Play, RefreshCw, Terminal, Wifi } from "lucide-react";
+import { Check, CircleAlert, Code2, ExternalLink, LayoutDashboard, Maximize2, Play, RefreshCw, Terminal, Wifi } from "lucide-react";
 import type { SandboxStatus } from "@shared/api";
 import type { ProjectFile, Viewport } from "./types";
 
@@ -14,9 +14,11 @@ interface PreviewPanelProps {
   activeTab: PreviewTab;
   onTabChange: (tab: PreviewTab) => void;
   sandboxStatus: SandboxStatus;
+  readOnly?: boolean;
+  onExternalOpenBlocked?: () => void;
 }
 
-export function PreviewPanel({ viewport, onRefresh, previewUrl, selectedFile, isRefreshing, activeTab, onTabChange, sandboxStatus }: PreviewPanelProps) {
+export function PreviewPanel({ viewport, onRefresh, previewUrl, selectedFile, isRefreshing, activeTab, onTabChange, sandboxStatus, readOnly = false, onExternalOpenBlocked }: PreviewPanelProps) {
   const sandboxConnected = sandboxStatus === "running";
   const [previewVersion, setPreviewVersion] = useState(0);
   const tabLabel = activeTab === "preview" ? "Preview" : activeTab === "code" ? "Code" : "Console";
@@ -26,23 +28,28 @@ export function PreviewPanel({ viewport, onRefresh, previewUrl, selectedFile, is
     onRefresh();
   }
 
+  function openPreview() {
+    const popup = window.open(previewUrl, "_blank", "noopener,noreferrer");
+    if (!popup) onExternalOpenBlocked?.();
+  }
+
   return <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#101628]">
     <div className="flex h-11 shrink-0 items-center justify-between border-b border-white/[0.07] px-4">
       <div className="flex items-center gap-1"><PreviewTab active={activeTab === "preview"} onClick={() => onTabChange("preview")} icon={LayoutDashboard}>Preview</PreviewTab><PreviewTab active={activeTab === "code"} onClick={() => onTabChange("code")} icon={Code2}>Code</PreviewTab><PreviewTab active={activeTab === "console"} onClick={() => onTabChange("console")} icon={Terminal}>Console</PreviewTab></div>
-      <div className="flex items-center gap-1.5"><span className={`hidden items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.12em] sm:flex ${sandboxConnected ? "text-emerald-300" : "text-amber-300"}`}><span className={`size-1.5 rounded-full ${sandboxConnected ? "bg-emerald-300 shadow-[0_0_7px_#6ee7b7]" : "bg-amber-300 shadow-[0_0_7px_#fcd34d]"}`} /> {sandboxConnected ? "running" : sandboxStatus}</span><button onClick={refresh} className="grid size-7 place-items-center rounded-md text-slate-500 hover:bg-white/[0.05] hover:text-slate-200" aria-label="Refresh preview"><RefreshCw className={`size-3.5 ${isRefreshing ? "animate-spin" : ""}`} /></button><button onClick={() => window.open(previewUrl, "_blank", "noopener,noreferrer")} className="grid size-7 place-items-center rounded-md text-slate-500 hover:bg-white/[0.05] hover:text-slate-200" aria-label="Open preview in new tab"><ExternalLink className="size-3.5" /></button></div>
+      <div className="flex items-center gap-1.5"><span className={`hidden items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.12em] sm:flex ${sandboxConnected ? "text-emerald-300" : "text-amber-300"}`}><span className={`size-1.5 rounded-full ${sandboxConnected ? "bg-emerald-300 shadow-[0_0_7px_#6ee7b7]" : "bg-amber-300 shadow-[0_0_7px_#fcd34d]"}`} /> {sandboxConnected ? "running" : sandboxStatus}</span><button onClick={refresh} className="grid size-7 place-items-center rounded-md text-slate-500 hover:bg-white/[0.05] hover:text-slate-200" aria-label="Refresh preview"><RefreshCw className={`size-3.5 ${isRefreshing ? "animate-spin" : ""}`} /></button><button onClick={openPreview} className="grid size-7 place-items-center rounded-md text-slate-500 hover:bg-white/[0.05] hover:text-slate-200" aria-label="Open preview in new tab"><ExternalLink className="size-3.5" /></button></div>
     </div>
 
     {activeTab === "preview" && <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto bg-[radial-gradient(ellipse_at_top,rgba(96,80,182,0.11),transparent_55%)] px-4 py-6 sm:px-8 lg:py-9">
-      <div className="mb-5 flex w-full max-w-[780px] items-center justify-between"><div><p className="font-mono text-[9px] uppercase tracking-[0.18em] text-slate-600">Interactive preview</p><p className="mt-1 text-xs text-slate-400">{tabLabel} / session-{previewVersion.toString().padStart(2, "0")}</p></div><div className="flex items-center gap-2 rounded-md border border-white/[0.07] bg-white/[0.03] px-2.5 py-1.5 font-mono text-[9px] text-slate-500"><Wifi className={`size-3 ${sandboxConnected ? "text-emerald-300" : "text-amber-300"}`} /> sandbox: {sandboxConnected ? "connected" : "preview shell"}</div></div>
+      <div className="mb-5 flex w-full max-w-[780px] items-center justify-between gap-3"><div className="min-w-0"><p className="font-mono text-[9px] uppercase tracking-[0.18em] text-slate-600">Interactive preview</p><p className="mt-1 truncate text-xs text-slate-400">{tabLabel} / session-{previewVersion.toString().padStart(2, "0")}</p></div><div className="flex shrink-0 items-center gap-2"><span className="hidden items-center gap-1.5 rounded-md border border-violet-300/15 bg-violet-300/[0.05] px-2.5 py-1.5 font-mono text-[9px] text-violet-200 sm:flex">{readOnly ? "Read-only invite" : "Editor session"}</span><span className="flex items-center gap-2 rounded-md border border-white/[0.07] bg-white/[0.03] px-2.5 py-1.5 font-mono text-[9px] text-slate-500"><Wifi className={`size-3 ${sandboxConnected ? "text-emerald-300" : "text-amber-300"}`} /> sandbox: {sandboxConnected ? "connected" : "preview shell"}</span></div></div>
       <div className={`w-full overflow-hidden rounded-xl border border-white/10 bg-[#f5f7fb] shadow-[0_24px_70px_rgba(0,0,0,0.35)] transition-all ${viewport === "mobile" ? "max-w-[340px]" : viewport === "tablet" ? "max-w-[630px]" : "max-w-[780px]"}`}>
         <div className="flex h-9 items-center gap-1.5 border-b border-slate-200 bg-white px-3"><span className="size-2 rounded-full bg-rose-300" /><span className="size-2 rounded-full bg-amber-300" /><span className="size-2 rounded-full bg-emerald-300" /><div className="mx-3 flex h-5 min-w-0 flex-1 items-center rounded bg-slate-100 px-2 font-mono text-[8px] text-slate-400"><span className="truncate">{previewUrl.replace("https://", "")}</span></div><Maximize2 className="size-3 text-slate-400" /></div>
         <LaunchpadMock viewport={viewport} />
       </div>
-      <p className="mt-5 flex items-center gap-1.5 font-mono text-[9px] text-slate-600"><Check className="size-3 text-emerald-300" /> Changes are reflected live in this session</p>
+      <p className="mt-5 flex items-center gap-1.5 text-center font-mono text-[9px] text-slate-600">{sandboxConnected ? <><Check className="size-3 text-emerald-300" /> Changes are reflected live in this session</> : <><CircleAlert className="size-3 text-amber-300" /> Preview shell only — connect a sandbox to run changes</>}</p>
     </div>}
 
     {activeTab === "code" && <CodeView file={selectedFile} />}
-    {activeTab === "console" && <ConsoleView />}
+    {activeTab === "console" && <ConsoleView sandboxStatus={sandboxStatus} />}
   </section>;
 }
 
@@ -70,6 +77,7 @@ function CodeView({ file }: { file?: ProjectFile }) {
   return <div className="min-h-0 flex-1 overflow-auto bg-[#0a0f1d] p-4 sm:p-7"><div className="mx-auto max-w-3xl overflow-hidden rounded-lg border border-white/[0.07] bg-[#0d1424]"><div className="flex items-center justify-between border-b border-white/[0.07] px-4 py-2.5"><span className="font-mono text-[10px] text-slate-400">{file?.path ?? "Select a file to inspect"}</span><Code2 className="size-3.5 text-violet-300" /></div><pre className="overflow-auto p-5 font-mono text-[11px] leading-[1.8] text-slate-400"><code>{file?.content ?? "Choose a file from the inspector to view its source."}</code></pre></div></div>;
 }
 
-function ConsoleView() {
-  return <div className="min-h-0 flex-1 overflow-auto bg-[#080c16] p-4 font-mono text-[10px] leading-[2] sm:p-7"><div className="mx-auto max-w-3xl"><p className="text-slate-600">10:43:07 <span className="text-emerald-300">INFO</span> sandbox session connected</p><p className="text-slate-600">10:43:08 <span className="text-violet-300">BUILD</span> compiling app/page.tsx</p><p className="text-slate-600">10:43:09 <span className="text-violet-300">BUILD</span> compiled 14 modules in 842ms</p><p className="text-slate-600">10:43:10 <span className="text-cyan-300">READY</span> preview available at /launchpad</p><p className="mt-4 text-emerald-300/80">$ waiting for the next instruction<span className="ml-1 inline-block h-3 w-1 animate-pulse bg-cyan-300 align-[-2px]" /></p></div></div>;
+function ConsoleView({ sandboxStatus }: { sandboxStatus: SandboxStatus }) {
+  const connected = sandboxStatus === "running";
+  return <div className="min-h-0 flex-1 overflow-auto bg-[#080c16] p-4 font-mono text-[10px] leading-[2] sm:p-7"><div className="mx-auto max-w-3xl"><p className="text-slate-600">10:43:07 <span className={connected ? "text-emerald-300" : "text-amber-300"}>INFO</span> {connected ? "sandbox session connected" : "sandbox runner disconnected"}</p>{connected ? <><p className="text-slate-600">10:43:08 <span className="text-violet-300">BUILD</span> compiling app/page.tsx</p><p className="text-slate-600">10:43:09 <span className="text-violet-300">BUILD</span> compiled 14 modules in 842ms</p><p className="text-slate-600">10:43:10 <span className="text-cyan-300">READY</span> preview available at /launchpad</p></> : <p className="text-slate-600">Set <span className="text-violet-300">SANDBOX_BASE_URL</span> on the server to execute generated code.</p>}<p className="mt-4 text-slate-500">$ waiting for the next instruction<span className="ml-1 inline-block h-3 w-1 animate-pulse bg-cyan-300 align-[-2px]" /></p></div></div>;
 }
