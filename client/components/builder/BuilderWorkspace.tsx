@@ -28,7 +28,7 @@ export function BuilderWorkspace() {
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>("chat");
   const [isGenerating, setIsGenerating] = useState(false);
   const [providerReady, setProviderReady] = useState(false);
-  const [sandboxStatus, setSandboxStatus] = useState<SandboxStatus>("running");
+  const [sandboxStatus, setSandboxStatus] = useState<SandboxStatus>("disconnected");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
 

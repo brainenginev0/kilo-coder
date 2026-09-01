@@ -68,12 +68,12 @@ export function ProjectRail({ onNewProject }: ProjectRailProps) {
       </div>
 
       <div className="space-y-3 border-t border-white/[0.07] p-3">
-        <div className="rounded-lg border border-emerald-300/15 bg-emerald-300/[0.05] p-3">
+        <div className="rounded-lg border border-amber-300/15 bg-amber-300/[0.04] p-3">
           <div className="mb-2 flex items-center justify-between">
-            <span className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-200"><span className="size-1.5 rounded-full bg-emerald-300 shadow-[0_0_8px_#6ee7b7]" /> Environment</span>
-            <span className="font-mono text-[9px] text-emerald-300/70">READY</span>
+            <span className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-200"><span className="size-1.5 rounded-full bg-amber-300 shadow-[0_0_8px_#fcd34d]" /> Environment</span>
+            <span className="font-mono text-[9px] text-amber-300/70">SHELL</span>
           </div>
-          <p className="font-mono text-[10px] leading-relaxed text-slate-500">Node 20 · Next 14<br />Sandbox session active</p>
+          <p className="font-mono text-[10px] leading-relaxed text-slate-500">Node 20 · Next 14<br />Connect runner to execute</p>
         </div>
         <div className="flex items-center gap-1">
           <button className="grid size-8 place-items-center rounded-md text-slate-500 transition-colors hover:bg-white/[0.05] hover:text-slate-200" aria-label="Project settings"><Settings2 className="size-4" /></button>
