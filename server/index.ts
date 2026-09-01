@@ -2,6 +2,8 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import { handleDemo } from "./routes/demo";
+import { handleChat } from "./routes/chat";
+import { handleProjectBuild } from "./routes/projects";
 
 export function createServer() {
   const app = express();
@@ -18,6 +20,8 @@ export function createServer() {
   });
 
   app.get("/api/demo", handleDemo);
+  app.post("/api/chat", handleChat);
+  app.post("/api/projects/:projectId/build", handleProjectBuild);
 
   return app;
 }
